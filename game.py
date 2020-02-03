@@ -3,25 +3,9 @@ import random
 from copy import deepcopy
 from dataclasses import dataclass
 from settings import settings
+from game_dependents import propagate_game, GameData
 
 random.seed(2000)
-
-
-def propagate_game(initial_game_data, action):
-    final_game_data = initial_game_data
-    answer = 0 if initial_game_data.turn % 2 == 0 else 1
-    if action != answer or initial_game_data.turn > 100:
-        final_game_data.game_over = True
-    return final_game_data
-
-
-class GameData:
-    def __init__(self):
-        self.game_over: bool = False
-        self.turn: int = 1
-
-    def __repr__(self):
-        return str(vars(self))
 
 
 class Game:
@@ -32,6 +16,7 @@ class Game:
 
     def play(self):
         assert self.data.game_over is False, 'Game is already over!'
+        self.strategy.start_new_game()
 
         if settings.narrate_game:
             print(self.data)
@@ -45,5 +30,3 @@ class Game:
 
             if settings.narrate_game:
                 print(self.data)
-
-            self.data.turn += 1

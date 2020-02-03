@@ -38,6 +38,6 @@ def get_prob_q2_greater_than_q1(mu1, sigma1, mu2, sigma2):
             return p_1 * (1 - f_2)
 
     func = Func(mu1, sigma1, mu2, sigma2)
-    result, error = quad(func, -np.inf, np.inf)
-    assert error < 1e-5
+    result, error = quad(func, -np.inf, np.inf)[0:2]
+    assert error < 1e-5, 'Error is too high. mu1 {}, sigma1 {}, mu2 {}, sigma2 {}, Result: {}, Error: {}'.format(mu1, sigma1, mu2, sigma2, result, error)
     return result

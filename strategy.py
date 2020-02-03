@@ -6,14 +6,8 @@ import numpy as np
 from settings import learning_params
 from game import GameData
 from utils import get_prob_q2_greater_than_q1
-
-START_Q = 0.5
-ALLOWED_ACTIONS = [0, 1]
-
-
-def get_reward(initial_data, final_data):
-    reward = 1 if final_data.game_over is False else 0
-    return reward
+from copy import deepcopy
+from game_dependents import START_Q, ALLOWED_ACTIONS, get_reward, PureState
 
 
 class Strategy:
@@ -26,6 +20,11 @@ class Strategy:
         self.last_data = None
         #self.just_applied: bool = False
 
+    def start_new_game(self):
+        self.last_state = None
+        self.last_action = None
+        self.last_data = None
+
     def respond(self, game_data):
         pure_state = PureState.build_from_data(game_data)
         if pure_state in list(self.states.keys()):
@@ -34,9 +33,8 @@ class Strategy:
             state = State(pure_state)
             self.states[pure_state] = state
 
-        #if self.learning:
-        #    self.last_state.update_max_q_value_of_next_state(state)
-        #self.last_state = state
+        if self.learning and self.last_state is not None:
+            self.last_state.update_max_q_values_of_next_states(state, self.last_action)
 
         if self.learning:
             action = state.explore()
@@ -54,15 +52,6 @@ class Strategy:
             self.last_state.update_q_value(self.last_action, reward)
 
 
-@dataclass(frozen=True)
-class PureState:
-    turn: int
-
-    @classmethod
-    def build_from_data(cls, data: GameData):
-        return cls(data.turn)
-
-
 @dataclass(frozen=False)
 class State:
     pure_state: PureState
@@ -70,7 +59,7 @@ class State:
     def __post_init__(self):
         self.actions: dict = dict([(action, START_Q) for action in ALLOWED_ACTIONS])
         self.stdevs: dict = dict([(action, np.nan) for action in ALLOWED_ACTIONS])
-        #self.max_q_value_of_next_state: float = np.nan
+        self.max_q_values_of_next_states = dict([(action, np.nan) for action in ALLOWED_ACTIONS])
         self.total_hits: int = 0
         self.num_hits: dict = dict([(action, 0) for action in ALLOWED_ACTIONS])
         self.history = []
@@ -124,18 +113,24 @@ class State:
     def update_q_value(self, action, reward):
         self.total_hits += 1
         self.num_hits[action] += 1
-        learned_value = reward #+ learning_params.discount_rate * self.max_q_value_of_next_state
+        learned_value = reward + learning_params.discount_rate * self.max_q_values_of_next_states[action] if not np.isnan(self.max_q_values_of_next_states[action]) else reward
         self.actions[action] = (((self.num_hits[action]-1) * self.actions[action]) + learned_value) / (self.num_hits[action])
-        #print(action)
-        self.history.append({'hit': self.num_hits[action], 'action': action, 'reward': reward, 'q_value': self.actions[action], 'decision_type': self.last_decision_type})
-        if self.num_hits[action] >= learning_params.min_len_to_take_stdev_over:
-            self.stdevs[action] = np.std([hist['reward'] for hist in self.history if hist['action'] == action])
 
-'''
-    def update_max_q_value_of_next_state(self, next_state):
+        if self.num_hits[action] >= learning_params.min_len_to_take_stdev_over:
+            self.stdevs[action] = np.std([hist['learned_value'] for hist in self.history if hist['action'] == action])
+
+        self.history.append(deepcopy({'hit': self.num_hits[action],
+                                      'action': action,
+                                      'reward': reward,
+                                      'learned_value': learned_value,
+                                      'q_value': self.actions[action],
+                                      'max_q_of_next_state': self.max_q_values_of_next_states,
+                                      'decision_type': self.last_decision_type,
+                                      }))
+
+    def update_max_q_values_of_next_states(self, next_state, last_action):
         learned_value = max(next_state.actions.values())
-        if self.max_q_value_of_next_state is np.nan:
-            self.max_q_value_of_next_state = max(next_state.actions.values())
+        if learning_params.next_state_is_predictable or np.isnan(self.max_q_values_of_next_states[last_action]):
+            self.max_q_values_of_next_states[last_action] = learned_value
         else:
-            self.max_q_value_of_next_state = (((self.total_hits-1) * self.max_q_value_of_next_state) + learned_value) / self.total_hits
-'''
+            self.max_q_values_of_next_states[last_action] = (((self.total_hits-1) * self.max_q_values_of_next_states[last_action]) + learned_value) / self.total_hits

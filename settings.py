@@ -33,9 +33,10 @@ class DisplaySettings:
 class LearningParams:
     random_action_rate: float = 0.5
     discount_rate: float = 1.0
-    num_epochs: int = 2000
+    num_epochs: int = 500
     explain: bool = False
     min_len_to_take_stdev_over = 10
+    next_state_is_predictable = True
 
 
 settings = Settings()
