@@ -3,7 +3,7 @@ import random
 from copy import deepcopy
 from dataclasses import dataclass
 from settings import settings
-from game_dependents import propagate_game, GameData
+from snake_game_dependents import propagate_game, GameData
 
 random.seed(2000)
 

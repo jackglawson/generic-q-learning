@@ -4,7 +4,7 @@ from typing import Tuple
 
 @dataclass
 class Settings:
-    grid_size: int = 3
+    grid_size: int = 6
     snake_start_loc: Tuple = (1, 1)
     snake_start_dir: str = 'r'
     narrate_game: bool = False
@@ -32,12 +32,15 @@ class DisplaySettings:
 @dataclass
 class LearningParams:
     random_action_rate: float = 0.5
-    discount_rate: float = 1.0
+    discount_rate: float = 0.5
     num_epochs: int = 500
     explain: bool = False
-    min_len_to_take_stdev_over = 10
+    learning: bool = True
+    explore_multiplier: float = 1.0     # increasing this will make it more likely to choose action at random
     next_state_is_predictable = True
-
+    min_hits_before_using_stats = 5
+    max_hits_used_in_stats = 100
+    predictive = True                  # if True, strategy will use max q of next state. Should be True if the reward is not given immediately
 
 settings = Settings()
 display_settings = DisplaySettings()
